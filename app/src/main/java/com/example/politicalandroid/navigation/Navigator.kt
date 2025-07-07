@@ -49,6 +49,16 @@ sealed class Screen(
         unselectedIcon = Icons.Outlined.Person,
         showInBottomNav = true
     )
+    
+    object ArticleDetail : Screen(
+        route = "article_detail/{articleId}",
+        title = "Article",
+        selectedIcon = Icons.Filled.Home, // Not used in bottom nav
+        unselectedIcon = Icons.Outlined.Home, // Not used in bottom nav
+        showInBottomNav = false
+    ) {
+        fun createRoute(articleId: Int) = "article_detail/$articleId"
+    }
 }
 
 val bottomNavScreens = listOf(

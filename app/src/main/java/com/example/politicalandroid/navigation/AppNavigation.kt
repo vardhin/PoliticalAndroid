@@ -13,6 +13,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
+import com.example.politicalandroid.ui.screens.ArticleDetailScreen
 import com.example.politicalandroid.ui.screens.DashboardScreen
 import com.example.politicalandroid.ui.screens.HomeScreen
 import com.example.politicalandroid.ui.screens.LoginScreen
@@ -98,6 +101,9 @@ fun AppNavigation() {
                         } else {
                             navController.navigate(Screen.Login.route)
                         }
+                    },
+                    onNavigateToArticle = { articleId ->
+                        navController.navigate(Screen.ArticleDetail.createRoute(articleId))
                     }
                 )
             }
@@ -147,6 +153,21 @@ fun AppNavigation() {
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Profile.route) { inclusive = false }
                         }
+                    },
+                    authViewModel = authViewModel
+                )
+            }
+            
+            // Add ArticleDetail screen
+            composable(
+                route = Screen.ArticleDetail.route,
+                arguments = listOf(navArgument("articleId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val articleId = backStackEntry.arguments?.getInt("articleId") ?: 0
+                ArticleDetailScreen(
+                    articleId = articleId,
+                    onNavigateBack = {
+                        navController.popBackStack()
                     },
                     authViewModel = authViewModel
                 )

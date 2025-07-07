@@ -24,6 +24,7 @@ import com.example.politicalandroid.viewmodel.ArticleViewModel
 fun HomeScreen(
     onNavigateToLogin: () -> Unit,
     onNavigateToDashboard: () -> Unit,
+    onNavigateToArticle: (Int) -> Unit,
     viewModel: ArticleViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -91,7 +92,10 @@ fun HomeScreen(
                 }
                 
                 items(uiState.featuredArticles) { article ->
-                    FeaturedArticleCard(article = article)
+                    FeaturedArticleCard(
+                        article = article,
+                        onArticleClick = { articleId -> onNavigateToArticle(articleId) }
+                    )
                 }
             }
             
@@ -107,7 +111,10 @@ fun HomeScreen(
                 }
                 
                 items(uiState.latestArticles) { article ->
-                    LatestArticleCard(article = article)
+                    LatestArticleCard(
+                        article = article,
+                        onArticleClick = { articleId -> onNavigateToArticle(articleId) }
+                    )
                 }
             }
             
@@ -127,12 +134,16 @@ fun HomeScreen(
 }
 
 @Composable
-fun FeaturedArticleCard(article: DisplayArticle) {
+fun FeaturedArticleCard(
+    article: DisplayArticle,
+    onArticleClick: (Int) -> Unit = {}
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(280.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        onClick = { onArticleClick(article.id) }
     ) {
         Column {
             AsyncImage(
@@ -193,10 +204,14 @@ fun FeaturedArticleCard(article: DisplayArticle) {
 }
 
 @Composable
-fun LatestArticleCard(article: DisplayArticle) {
+fun LatestArticleCard(
+    article: DisplayArticle,
+    onArticleClick: (Int) -> Unit = {}
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        onClick = { onArticleClick(article.id) }
     ) {
         Column(
             modifier = Modifier.padding(16.dp)

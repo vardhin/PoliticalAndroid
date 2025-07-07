@@ -21,8 +21,8 @@ interface ApiService {
         @Part("summary") summary: RequestBody,
         @Part("article_text") articleText: RequestBody,
         @Part("category") category: RequestBody,
-        @Part("featured") featured: RequestBody,
         @Part("date") date: RequestBody,
+        @Part("featured") featured: RequestBody,
         @Part image: MultipartBody.Part
     ): Response<Article>
 }

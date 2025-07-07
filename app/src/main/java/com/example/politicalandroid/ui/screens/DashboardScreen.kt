@@ -13,10 +13,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.politicalandroid.viewmodel.AuthViewModel
+import com.example.politicalandroid.viewmodel.DashboardViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,7 +26,10 @@ fun DashboardScreen(
     onLogout: () -> Unit,
     viewModel: AuthViewModel
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val authUiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val dashboardViewModel = remember { DashboardViewModel(context) }
+    val dashboardUiState by dashboardViewModel.uiState.collectAsState()
     
     // Form state
     var title by remember { mutableStateOf("") }
@@ -33,22 +38,31 @@ fun DashboardScreen(
     var category by remember { mutableStateOf("General") }
     var featured by remember { mutableStateOf(false) }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
-    var submitting by remember { mutableStateOf(false) }
-    var submitMessage by remember { mutableStateOf<String?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
     
     // Image picker
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         imageUri = uri
-        error = null
+        dashboardViewModel.clearMessages()
     }
     
     // Handle logout
-    LaunchedEffect(uiState.isLoggedIn) {
-        if (!uiState.isLoggedIn) {
+    LaunchedEffect(authUiState.isLoggedIn) {
+        if (!authUiState.isLoggedIn) {
             onLogout()
+        }
+    }
+    
+    // Clear form on successful submission
+    LaunchedEffect(dashboardUiState.submitSuccess) {
+        if (dashboardUiState.submitSuccess) {
+            title = ""
+            summary = ""
+            articleText = ""
+            category = "General"
+            featured = false
+            imageUri = null
         }
     }
     
@@ -64,7 +78,7 @@ fun DashboardScreen(
                         Icon(Icons.Default.Person, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Welcome, ${uiState.user?.username ?: "User"}",
+                            text = "Welcome, ${authUiState.user?.username ?: "User"}",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -99,7 +113,7 @@ fun DashboardScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Error Message
-                    error?.let { errorMsg ->
+                    dashboardUiState.errorMessage?.let { errorMsg ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(
@@ -116,7 +130,7 @@ fun DashboardScreen(
                     }
                     
                     // Success Message
-                    submitMessage?.let { message ->
+                    dashboardUiState.submitMessage?.let { message ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(
@@ -135,10 +149,13 @@ fun DashboardScreen(
                     // Title Field
                     OutlinedTextField(
                         value = title,
-                        onValueChange = { title = it },
+                        onValueChange = { 
+                            title = it
+                            dashboardViewModel.clearMessages()
+                        },
                         label = { Text("Title") },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !submitting
+                        enabled = !dashboardUiState.isSubmitting
                     )
                     
                     Spacer(modifier = Modifier.height(16.dp))
@@ -146,10 +163,13 @@ fun DashboardScreen(
                     // Summary Field
                     OutlinedTextField(
                         value = summary,
-                        onValueChange = { summary = it },
+                        onValueChange = { 
+                            summary = it
+                            dashboardViewModel.clearMessages()
+                        },
                         label = { Text("Summary") },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !submitting,
+                        enabled = !dashboardUiState.isSubmitting,
                         minLines = 3,
                         maxLines = 5
                     )
@@ -159,10 +179,13 @@ fun DashboardScreen(
                     // Article Content Field
                     OutlinedTextField(
                         value = articleText,
-                        onValueChange = { articleText = it },
+                        onValueChange = { 
+                            articleText = it
+                            dashboardViewModel.clearMessages()
+                        },
                         label = { Text("Article Content") },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !submitting,
+                        enabled = !dashboardUiState.isSubmitting,
                         minLines = 8,
                         maxLines = 15
                     )
@@ -180,7 +203,7 @@ fun DashboardScreen(
                         
                         Button(
                             onClick = { imagePickerLauncher.launch("image/*") },
-                            enabled = !submitting,
+                            enabled = !dashboardUiState.isSubmitting,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Select Image")
@@ -232,7 +255,7 @@ fun DashboardScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .menuAnchor(),
-                                    enabled = !submitting
+                                    enabled = !dashboardUiState.isSubmitting
                                 )
                                 
                                 ExposedDropdownMenu(
@@ -245,6 +268,7 @@ fun DashboardScreen(
                                             onClick = {
                                                 category = option
                                                 expanded = false
+                                                dashboardViewModel.clearMessages()
                                             }
                                         )
                                     }
@@ -266,8 +290,11 @@ fun DashboardScreen(
                             ) {
                                 Checkbox(
                                     checked = featured,
-                                    onCheckedChange = { featured = it },
-                                    enabled = !submitting
+                                    onCheckedChange = { 
+                                        featured = it
+                                        dashboardViewModel.clearMessages()
+                                    },
+                                    enabled = !dashboardUiState.isSubmitting
                                 )
                                 Text("Featured Article")
                             }
@@ -280,38 +307,37 @@ fun DashboardScreen(
                     Button(
                         onClick = {
                             when {
-                                title.isBlank() -> error = "Please enter a title"
-                                summary.isBlank() -> error = "Please enter a summary"
-                                articleText.isBlank() -> error = "Please enter article content"
-                                imageUri == null -> error = "Please select an image"
+                                title.isBlank() -> dashboardViewModel.clearMessages()
+                                summary.isBlank() -> dashboardViewModel.clearMessages()
+                                articleText.isBlank() -> dashboardViewModel.clearMessages()
+                                imageUri == null -> dashboardViewModel.clearMessages()
                                 else -> {
-                                    // TODO: Implement article submission
-                                    submitting = true
-                                    // Simulate submission
-                                    submitMessage = "Article successfully published!"
-                                    // Clear form
-                                    title = ""
-                                    summary = ""
-                                    articleText = ""
-                                    category = "General"
-                                    featured = false
-                                    imageUri = null
-                                    submitting = false
-                                    error = null
+                                    dashboardViewModel.createArticle(
+                                        title = title,
+                                        summary = summary,
+                                        articleText = articleText,
+                                        category = category,
+                                        featured = featured,
+                                        imageUri = imageUri!!
+                                    )
                                 }
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !submitting
+                        enabled = !dashboardUiState.isSubmitting && 
+                                title.isNotBlank() && 
+                                summary.isNotBlank() && 
+                                articleText.isNotBlank() && 
+                                imageUri != null
                     ) {
-                        if (submitting) {
+                        if (dashboardUiState.isSubmitting) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                         }
-                        Text(if (submitting) "Publishing..." else "Publish Article")
+                        Text(if (dashboardUiState.isSubmitting) "Publishing..." else "Publish Article")
                     }
                 }
             }
