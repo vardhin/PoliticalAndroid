@@ -45,4 +45,10 @@ interface ArticleDetailApiService {
         @Part("date") date: RequestBody,
         @Part("featured") featured: RequestBody  // Add featured field
     ): Response<Unit>
+    
+    @DELETE("articles/{id}")
+    suspend fun deleteArticle(
+        @Path("id") articleId: Int,
+        @Header("Authorization") token: String
+    ): Response<Unit>
 }

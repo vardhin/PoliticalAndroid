@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +42,13 @@ fun ArticleDetailScreen(
         uri?.let { viewModel.updateSelectedImage(it, context) }
     }
     
+    // Handle navigation back on successful delete
+    LaunchedEffect(uiState.deleteSuccess) {
+        if (uiState.deleteSuccess) {
+            onNavigateBack()
+        }
+    }
+    
     LaunchedEffect(articleId) {
         viewModel.loadArticle(articleId)
     }
@@ -56,6 +64,26 @@ fun ArticleDetailScreen(
                 },
                 actions = {
                     if (authState.isLoggedIn && authState.user?.role == "admin") {
+                        // Delete button
+                        IconButton(
+                            onClick = { viewModel.showDeleteConfirmation() },
+                            enabled = !uiState.isDeleting
+                        ) {
+                            if (uiState.isDeleting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Delete Article",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                        
+                        // Edit button
                         IconButton(
                             onClick = { viewModel.toggleEditMode() }
                         ) {
@@ -69,6 +97,88 @@ fun ArticleDetailScreen(
             )
         }
     ) { innerPadding ->
+        
+        // Authentication Error Dialog
+        if (uiState.requiresReauth) {
+            AlertDialog(
+                onDismissRequest = { viewModel.clearAuthError() },
+                title = { 
+                    Text(
+                        "Authentication Required",
+                        color = MaterialTheme.colorScheme.error
+                    ) 
+                },
+                text = { 
+                    Text("Your session has expired. Please login again to continue.")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { 
+                            viewModel.clearAuthError()
+                            authViewModel.logout()
+                            onNavigateBack()
+                        }
+                    ) {
+                        Text("Login Again")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(
+                        onClick = { viewModel.clearAuthError() }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+        
+        // Delete Confirmation Dialog
+        if (uiState.showDeleteConfirm) {
+            AlertDialog(
+                onDismissRequest = { viewModel.hideDeleteConfirmation() },
+                title = { 
+                    Text(
+                        "Delete Article",
+                        color = MaterialTheme.colorScheme.error
+                    ) 
+                },
+                text = { 
+                    Column {
+                        Text("Are you sure you want to delete this article?")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "\"${uiState.article?.title ?: ""}\"",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "This action cannot be undone.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { viewModel.deleteArticle() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Delete", color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(
+                        onClick = { viewModel.hideDeleteConfirmation() }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+        
         when {
             uiState.isLoading -> {
                 Box(
@@ -192,7 +302,7 @@ fun ArticleDetailScreen(
                         }
                     }
                     
-                    // Featured Status Section (Add this new section)
+                    // Featured Status Section
                     if (uiState.isEditMode) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),

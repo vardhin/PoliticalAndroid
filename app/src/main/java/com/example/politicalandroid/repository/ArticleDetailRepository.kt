@@ -29,6 +29,43 @@ class ArticleDetailRepository {
         apiService = retrofit.create(ArticleDetailApiService::class.java)
     }
     
+    suspend fun deleteArticle(articleId: Int, authToken: String): Result<Unit> {
+        return try {
+            // Ensure the token has the Bearer prefix
+            val formattedToken = if (authToken.startsWith("Bearer ")) {
+                authToken
+            } else {
+                "Bearer $authToken"
+            }
+            
+            println("Attempting to delete article $articleId with token: ${formattedToken.take(20)}...")
+            
+            val response = apiService.deleteArticle(
+                articleId = articleId,
+                token = formattedToken
+            )
+            
+            println("Delete response: ${response.code()}")
+            
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "Unknown error"
+                println("Delete error: $errorMessage")
+                
+                when (response.code()) {
+                    401 -> Result.failure(Exception("Authentication failed. Please login again."))
+                    403 -> Result.failure(Exception("You don't have permission to delete this article."))
+                    404 -> Result.failure(Exception("Article not found."))
+                    else -> Result.failure(Exception("Failed to delete article: ${response.code()} - $errorMessage"))
+                }
+            }
+        } catch (e: Exception) {
+            println("Delete exception: ${e.message}")
+            Result.failure(Exception("Network error: ${e.message}"))
+        }
+    }
+    
     suspend fun updateArticle(
         editableArticle: EditableArticle,
         imageUri: Uri?,

@@ -20,11 +20,15 @@ data class ArticleDetailUiState(
     val isLoading: Boolean = false,
     val isEditMode: Boolean = false,
     val isSaving: Boolean = false,
+    val isDeleting: Boolean = false,
     val hasChanges: Boolean = false,
     val selectedImageUri: Uri? = null,
     val errorMessage: String? = null,
     val saveMessage: String? = null,
-    val saveSuccess: Boolean = false
+    val saveSuccess: Boolean = false,
+    val deleteSuccess: Boolean = false,
+    val showDeleteConfirm: Boolean = false,
+    val requiresReauth: Boolean = false
 )
 
 class ArticleDetailViewModel(context: Context) : ViewModel() {
@@ -64,6 +68,76 @@ class ArticleDetailViewModel(context: Context) : ViewModel() {
                 }
             )
         }
+    }
+    
+    fun showDeleteConfirmation() {
+        _uiState.value = _uiState.value.copy(showDeleteConfirm = true)
+    }
+    
+    fun hideDeleteConfirmation() {
+        _uiState.value = _uiState.value.copy(showDeleteConfirm = false)
+    }
+    
+    fun deleteArticle() {
+        val articleId = _uiState.value.article?.id ?: return
+        
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isDeleting = true, 
+                showDeleteConfirm = false,
+                saveMessage = null,
+                requiresReauth = false
+            )
+            
+            try {
+                val authToken = preferencesManager.authToken.first()
+                println("Auth token retrieved: ${authToken?.take(20)}...")
+                
+                if (authToken.isNullOrEmpty()) {
+                    _uiState.value = _uiState.value.copy(
+                        isDeleting = false,
+                        saveMessage = "No authentication token found. Please login again.",
+                        saveSuccess = false,
+                        requiresReauth = true
+                    )
+                    return@launch
+                }
+                
+                val result = repository.deleteArticle(articleId, authToken)
+                
+                result.fold(
+                    onSuccess = {
+                        _uiState.value = _uiState.value.copy(
+                            isDeleting = false,
+                            deleteSuccess = true,
+                            saveMessage = "Article deleted successfully!",
+                            saveSuccess = true
+                        )
+                    },
+                    onFailure = { exception ->
+                        val isAuthError = exception.message?.contains("Authentication failed") == true ||
+                                        exception.message?.contains("Invalid token") == true
+                        
+                        _uiState.value = _uiState.value.copy(
+                            isDeleting = false,
+                            saveMessage = exception.message ?: "Failed to delete article",
+                            saveSuccess = false,
+                            requiresReauth = isAuthError
+                        )
+                    }
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isDeleting = false,
+                    saveMessage = "Error: ${e.message}",
+                    saveSuccess = false
+                )
+            }
+        }
+    }
+    
+    fun clearAuthError() {
+        _uiState.value = _uiState.value.copy(requiresReauth = false)
     }
     
     fun toggleEditMode() {
