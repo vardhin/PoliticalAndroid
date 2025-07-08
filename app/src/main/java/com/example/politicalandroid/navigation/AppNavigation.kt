@@ -21,6 +21,7 @@ import com.example.politicalandroid.ui.screens.HomeScreen
 import com.example.politicalandroid.ui.screens.LoginScreen
 import com.example.politicalandroid.ui.screens.ProfileScreen
 import com.example.politicalandroid.viewmodel.AuthViewModel
+import com.example.politicalandroid.viewmodel.ContactSubmissionsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +29,7 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val context = LocalContext.current
     val authViewModel: AuthViewModel = viewModel { AuthViewModel(context) }
+    val contactSubmissionsViewModel: ContactSubmissionsViewModel = viewModel { ContactSubmissionsViewModel(context) }
     val authUiState by authViewModel.uiState.collectAsState()
     
     // Get current route
@@ -154,7 +156,8 @@ fun AppNavigation() {
                             popUpTo(Screen.Profile.route) { inclusive = false }
                         }
                     },
-                    authViewModel = authViewModel
+                    authViewModel = authViewModel,
+                    contactSubmissionsViewModel = contactSubmissionsViewModel
                 )
             }
             
