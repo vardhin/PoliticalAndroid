@@ -35,248 +35,106 @@ fun ProfileScreen(
                 .padding(innerPadding)
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (uiState.isLoggedIn && uiState.user != null) {
-                val user = uiState.user!! // Safe to use after null check
-                
-                // Logged in user profile
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "Profile",
-                            modifier = Modifier.size(80.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text(
-                            text = user.username,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        // Show role instead of email
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = user.role.replaceFirstChar { it.uppercase() }, // Capitalize role
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        // Profile options
-                        ProfileOption(
-                            icon = Icons.Default.Dashboard,
-                            title = "Admin Dashboard",
-                            subtitle = "Manage articles and content",
-                            onClick = { /* Navigate to dashboard */ }
-                        )
-                        
-                        ProfileOption(
-                            icon = Icons.Default.Settings,
-                            title = "Settings",
-                            subtitle = "App preferences and configuration",
-                            onClick = { /* Navigate to settings */ }
-                        )
-                        
-                        ProfileOption(
-                            icon = Icons.Default.Info,
-                            title = "About",
-                            subtitle = "App information and version",
-                            onClick = { /* Navigate to about */ }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        // Logout button
-                        OutlinedButton(
-                            onClick = onLogout,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ExitToApp,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Logout")
-                        }
-                    }
-                }
-            } else {
-                // Not logged in
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Guest",
-                            modifier = Modifier.size(80.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text(
-                            text = "Guest User",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = "Sign in to access admin features",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        // Login button
-                        Button(
-                            onClick = onNavigateToLogin,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Login,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Sign In")
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Guest options
-                        ProfileOption(
-                            icon = Icons.Default.Info,
-                            title = "About",
-                            subtitle = "App information and version",
-                            onClick = { /* Navigate to about */ }
-                        )
-                        
-                        ProfileOption(
-                            icon = Icons.Default.Settings,
-                            title = "Settings",
-                            subtitle = "Basic app preferences",
-                            onClick = { /* Navigate to settings */ }
-                        )
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Backend status card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (uiState.backendStatus.contains("unavailable"))
-                        MaterialTheme.colorScheme.errorContainer
-                    else
-                        MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (uiState.backendStatus.contains("unavailable"))
-                            Icons.Default.Error
-                        else
-                            Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = if (uiState.backendStatus.contains("unavailable"))
-                            MaterialTheme.colorScheme.onErrorContainer
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "Backend Status",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = uiState.backendStatus,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (uiState.backendStatus.contains("unavailable"))
-                                MaterialTheme.colorScheme.onErrorContainer
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
+            // Main Profile Card
+            ProfileCard(
+                isLoggedIn = uiState.isLoggedIn,
+                user = uiState.user,
+                onLogin = onNavigateToLogin,
+                onLogout = onLogout
+            )
         }
     }
 }
 
 @Composable
-fun ProfileOption(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
+private fun ProfileCard(
+    isLoggedIn: Boolean,
+    user: com.example.politicalandroid.data.User?,
+    onLogin: () -> Unit,
+    onLogout: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
+            if (isLoggedIn && user != null) {
+                // User Profile
+                Icon(
+                    imageVector = Icons.Default.AccountCircle,
+                    contentDescription = "Profile",
+                    modifier = Modifier.size(80.dp),
+                    tint = MaterialTheme.colorScheme.primary
                 )
+                
                 Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
+                    text = user.username,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Text(
+                    text = user.role.replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                
+                OutlinedButton(
+                    onClick = onLogout,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ExitToApp,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Logout")
+                }
+            } else {
+                // Guest Profile
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Guest",
+                    modifier = Modifier.size(80.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Text(
+                    text = "Guest User",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Text(
+                    text = "Sign in to access admin features",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Button(
+                    onClick = onLogin,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Login,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Sign In")
+                }
             }
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
