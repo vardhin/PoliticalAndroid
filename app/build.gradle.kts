@@ -77,6 +77,9 @@ dependencies {
     // Add serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 
+    // Add swipe refresh
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

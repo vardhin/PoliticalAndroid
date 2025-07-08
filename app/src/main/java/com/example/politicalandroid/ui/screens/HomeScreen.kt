@@ -3,21 +3,29 @@ package com.example.politicalandroid.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.politicalandroid.data.DisplayArticle
 import com.example.politicalandroid.viewmodel.ArticleViewModel
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,12 +36,72 @@ fun HomeScreen(
     viewModel: ArticleViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val listState = rememberLazyListState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isRefreshing)
+    
+    // Track if we've done the initial automatic refresh
+    var hasPerformedAutomaticRefresh by remember { mutableStateOf(false) }
+    
+    // Handle lifecycle events for automatic refresh
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    // Only auto-refresh if we've already loaded content before
+                    // This prevents double-loading on first app launch
+                    if (uiState.hasContent && !hasPerformedAutomaticRefresh) {
+                        viewModel.refresh()
+                        hasPerformedAutomaticRefresh = true
+                    }
+                }
+                Lifecycle.Event.ON_PAUSE -> {
+                    // Reset the flag when leaving the screen
+                    hasPerformedAutomaticRefresh = false
+                }
+                else -> {}
+            }
+        }
+        
+        lifecycleOwner.lifecycle.addObserver(observer)
+        
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    
+    // Alternative approach: Listen for navigation events
+    // This triggers refresh whenever the composable is recomposed due to navigation
+    LaunchedEffect(Unit) {
+        // Only refresh if we have existing content (not on first load)
+        if (uiState.hasContent) {
+            viewModel.refresh()
+        }
+    }
     
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Political Gossips") },
                 actions = {
+                    // Small refresh button
+                    IconButton(
+                        onClick = { viewModel.refresh() },
+                        enabled = !uiState.isRefreshing
+                    ) {
+                        if (uiState.isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refresh"
+                            )
+                        }
+                    }
+                    
                     TextButton(onClick = onNavigateToDashboard) {
                         Text("Admin")
                     }
@@ -41,92 +109,102 @@ fun HomeScreen(
             )
         }
     ) { innerPadding ->
-        LazyColumn(
+        SwipeRefresh(
+            state = swipeRefreshState,
+            onRefresh = { viewModel.refresh() },
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(innerPadding)
         ) {
-            // Loading State
-            if (uiState.isLoading) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Loading State (only show when no content and loading)
+                if (uiState.isLoading && !uiState.hasContent) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
-            }
-            
-            // Error State
-            uiState.errorMessage?.let { error ->
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
+                
+                // Error State (only show when no content and error)
+                if (!uiState.hasContent && uiState.errorMessage != null) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = uiState.errorMessage ?: "Unknown error",
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                TextButton(
+                                    onClick = { viewModel.loadArticles() }
+                                ) {
+                                    Text("Retry")
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Featured Articles Section
+                if (uiState.featuredArticles.isNotEmpty()) {
+                    item {
                         Text(
-                            text = error,
-                            modifier = Modifier.padding(16.dp),
-                            color = MaterialTheme.colorScheme.onErrorContainer
+                            text = "Featured Articles",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                    
+                    items(uiState.featuredArticles) { article ->
+                        FeaturedArticleCard(
+                            article = article,
+                            onArticleClick = { articleId -> onNavigateToArticle(articleId) }
                         )
                     }
                 }
-            }
-            
-            // Featured Articles Section
-            if (uiState.featuredArticles.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "Featured Articles",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
+                
+                // Latest News Section
+                if (uiState.latestArticles.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "Latest News",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                    
+                    items(uiState.latestArticles) { article ->
+                        LatestArticleCard(
+                            article = article,
+                            onArticleClick = { articleId -> onNavigateToArticle(articleId) }
+                        )
+                    }
                 }
                 
-                items(uiState.featuredArticles) { article ->
-                    FeaturedArticleCard(
-                        article = article,
-                        onArticleClick = { articleId -> onNavigateToArticle(articleId) }
-                    )
-                }
-            }
-            
-            // Latest News Section
-            if (uiState.latestArticles.isNotEmpty()) {
+                // Add some bottom padding
                 item {
-                    Text(
-                        text = "Latest News",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
-                
-                items(uiState.latestArticles) { article ->
-                    LatestArticleCard(
-                        article = article,
-                        onArticleClick = { articleId -> onNavigateToArticle(articleId) }
-                    )
-                }
-            }
-            
-            // Refresh Button
-            item {
-                Button(
-                    onClick = { viewModel.loadArticles() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp)
-                ) {
-                    Text("Refresh Articles")
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
