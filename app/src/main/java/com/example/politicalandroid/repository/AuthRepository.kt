@@ -39,7 +39,7 @@ class AuthRepository {
                 val status = if (health?.dbState != null) {
                     "Backend: ${health.status}, DB: ${health.dbState}"
                 } else {
-                    "Backend: ${health.status ?: "connected"}"
+                    "Backend: ${health?.status ?: "connected"}"
                 }
                 Result.success(status)
             } else {
