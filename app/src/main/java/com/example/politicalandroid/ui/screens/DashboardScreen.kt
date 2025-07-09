@@ -69,7 +69,7 @@ fun DashboardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Admin Dashboard") },
+                title = { Text("Admin DB") },
                 actions = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -262,7 +262,7 @@ fun DashboardScreen(
                                     expanded = expanded,
                                     onDismissRequest = { expanded = false }
                                 ) {
-                                    listOf("General", "Political").forEach { option ->
+                                    listOf("General", "Political", "Crime").forEach { option ->
                                         DropdownMenuItem(
                                             text = { Text(option) },
                                             onClick = {
@@ -306,6 +306,14 @@ fun DashboardScreen(
                     // Submit Button
                     Button(
                         onClick = {
+                            // Check if user is authenticated first
+                            if (!authUiState.isLoggedIn || authUiState.user == null) {
+                                // User is not authenticated, logout and redirect to login
+                                viewModel.logout()
+                                onLogout()
+                                return@Button
+                            }
+                            
                             when {
                                 title.isBlank() -> dashboardViewModel.clearMessages()
                                 summary.isBlank() -> dashboardViewModel.clearMessages()

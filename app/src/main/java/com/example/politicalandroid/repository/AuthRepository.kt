@@ -39,7 +39,7 @@ class AuthRepository {
                 val status = if (health?.dbState != null) {
                     "Backend: ${health.status}, DB: ${health.dbState}"
                 } else {
-                    "Backend: ${health?.status ?: "connected"}"
+                    "Backend: ${health.status ?: "connected"}"
                 }
                 Result.success(status)
             } else {
@@ -59,10 +59,8 @@ class AuthRepository {
                 } ?: Result.failure(Exception("Invalid response"))
             } else {
                 val errorMessage = try {
-                    // Parse the actual error response from backend
                     val errorBody = response.errorBody()?.string()
                     if (errorBody != null) {
-                        // Try to parse JSON error response
                         val gson = com.google.gson.Gson()
                         val apiError = gson.fromJson(errorBody, ApiError::class.java)
                         apiError.message
@@ -73,6 +71,21 @@ class AuthRepository {
                     "Login failed: ${response.code()} ${response.message()}"
                 }
                 Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Network error: ${e.message}"))
+        }
+    }
+    
+    suspend fun refreshToken(refreshToken: String): Result<String> {
+        return try {
+            val response = authApiService.refreshToken(RefreshTokenRequest(refreshToken))
+            if (response.isSuccessful) {
+                response.body()?.let { refreshResponse ->
+                    Result.success(refreshResponse.accessToken)
+                } ?: Result.failure(Exception("Invalid refresh response"))
+            } else {
+                Result.failure(Exception("Token refresh failed"))
             }
         } catch (e: Exception) {
             Result.failure(Exception("Network error: ${e.message}"))

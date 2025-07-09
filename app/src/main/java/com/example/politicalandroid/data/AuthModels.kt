@@ -7,14 +7,22 @@ data class LoginRequest(
 
 data class LoginResponse(
     val accessToken: String,
-    val refreshToken: String,  // Add missing refreshToken
+    val refreshToken: String,
     val user: User
 )
 
+data class RefreshTokenRequest(
+    val refreshToken: String
+)
+
+data class RefreshTokenResponse(
+    val accessToken: String
+)
+
 data class User(
-    val id: String,        // Changed from Int to String for MongoDB ObjectId
+    val id: String,
     val username: String,
-    val role: String       // Changed from email to role
+    val role: String
 )
 
 data class ApiError(

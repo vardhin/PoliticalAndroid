@@ -48,7 +48,7 @@ class DashboardViewModel(context: Context) : ViewModel() {
                 if (authToken.isNullOrEmpty()) {
                     _uiState.value = _uiState.value.copy(
                         isSubmitting = false,
-                        errorMessage = "Authentication required",
+                        errorMessage = "Please login again to continue",
                         submitSuccess = false
                     )
                     return@launch
@@ -74,9 +74,16 @@ class DashboardViewModel(context: Context) : ViewModel() {
                         )
                     },
                     onFailure = { exception ->
+                        val errorMessage = when {
+                            exception.message?.contains("401") == true || 
+                            exception.message?.contains("Unauthorized") == true -> 
+                                "Session expired. Please login again."
+                            else -> exception.message ?: "Failed to publish article"
+                        }
+                        
                         _uiState.value = _uiState.value.copy(
                             isSubmitting = false,
-                            errorMessage = exception.message ?: "Failed to publish article",
+                            errorMessage = errorMessage,
                             submitSuccess = false
                         )
                     }

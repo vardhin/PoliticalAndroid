@@ -34,13 +34,36 @@ class AuthViewModel(context: Context) : ViewModel() {
         viewModelScope.launch {
             combine(
                 preferencesManager.authToken,
+                preferencesManager.refreshToken,
                 preferencesManager.userData
-            ) { token, user ->
+            ) { token, refreshToken, user ->
+                val isLoggedIn = (!token.isNullOrEmpty() || !refreshToken.isNullOrEmpty()) && user != null
+                
+                // Try to refresh token if we have a refresh token but no access token
+                if (token.isNullOrEmpty() && !refreshToken.isNullOrEmpty() && user != null) {
+                    tryRefreshToken(refreshToken)
+                }
+                
                 _uiState.value = _uiState.value.copy(
-                    isLoggedIn = !token.isNullOrEmpty() && user != null,
+                    isLoggedIn = isLoggedIn,
                     user = user
                 )
             }.collect()
+        }
+    }
+    
+    private fun tryRefreshToken(refreshToken: String) {
+        viewModelScope.launch {
+            val result = repository.refreshToken(refreshToken)
+            result.fold(
+                onSuccess = { newAccessToken ->
+                    preferencesManager.updateAccessToken(newAccessToken)
+                },
+                onFailure = {
+                    // If refresh fails, clear all auth data
+                    preferencesManager.clearAuthData()
+                }
+            )
         }
     }
     
@@ -60,7 +83,11 @@ class AuthViewModel(context: Context) : ViewModel() {
             val result = repository.login(username, password)
             result.fold(
                 onSuccess = { loginResponse ->
-                    preferencesManager.saveAuthData(loginResponse.accessToken, loginResponse.user)
+                    preferencesManager.saveAuthData(
+                        loginResponse.accessToken, 
+                        loginResponse.refreshToken, 
+                        loginResponse.user
+                    )
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         loginSuccess = true,
